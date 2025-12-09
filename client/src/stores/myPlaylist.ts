@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
+import { useSourceStore } from '@/stores/source'
 import type { Song } from '@/api/music'
 
 export interface Playlist {
@@ -14,6 +15,7 @@ const STORAGE_KEY = 'my_playlists'
 
 export const useMyPlaylistStore = defineStore('myPlaylist', () => {
   const playlists = ref<Playlist[]>([])
+  const sourceStore = useSourceStore()
 
   // 初始化：从 localStorage 读取
   const init = () => {
@@ -72,9 +74,12 @@ export const useMyPlaylistStore = defineStore('myPlaylist', () => {
     if (playlist) {
       // 检查是否已存在
       if (!playlist.songs.some(s => s.id === song.id)) {
-        playlist.songs.unshift(song)
+        const sourceName = song.source as string | undefined ?? sourceStore.currentSourceName
+        const songWithSource: Song = sourceName ? { ...song, source: sourceName } : { ...song } 
+        console.log('添加歌曲', songWithSource);       
+        playlist.songs.unshift(songWithSource)
         // 更新封面 (因为添加在最前面，所以封面总是最新的歌曲封面)
-        playlist.cover = song.artwork
+        playlist.cover = songWithSource.artwork
         return true
       }
     }

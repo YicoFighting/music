@@ -23,6 +23,7 @@ export interface Song {
   artwork?: string
   duration?: number
   url?: string
+  source?: string
   [key: string]: unknown
 }
 

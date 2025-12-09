@@ -19,6 +19,7 @@ export const usePlayerStore = defineStore('player', () => {
   const currentIndex = ref(-1)
   const playMode = ref<PlayMode>((localStorage.getItem(PLAY_MODE_KEY) as PlayMode) || 'sequence')
   const showPlaylist = ref(false)
+  const sourceStore = useSourceStore()
 
   // 计算属性
   const hasCurrentSong = computed(() => currentSong.value !== null)
@@ -27,29 +28,34 @@ export const usePlayerStore = defineStore('player', () => {
   const playSong = async (song: Song) => {
     if (isLoading.value) return
 
-    const sourceStore = useSourceStore()
-    const source = sourceStore.currentSourceName
-
-    if (!source) {
+    if (!sourceStore.currentSourceName) {
       await sourceStore.initialize()
-      if (!sourceStore.currentSourceName) {
-        console.error('No source selected')
-        return
-      }
     }
+
+    const resolvedSource = (song.source as string | undefined) ?? sourceStore.currentSourceName
+
+    if (!resolvedSource) {
+      console.error('No source available for song:', song.title)
+      return
+    }
+
+    const songWithSource: Song = song.source ? song : { ...song, source: resolvedSource }
 
     // 更新当前索引
     const index = playlist.value.findIndex(s => s.id === song.id)
     if (index !== -1) {
       currentIndex.value = index
+      if (playlist.value[index] !== songWithSource) {
+        playlist.value.splice(index, 1, songWithSource)
+      }
     }
 
     try {
       isLoading.value = true
-      currentSong.value = song
+      currentSong.value = songWithSource
 
-      console.log('Fetching play URL for:', song.title, 'source:', source)
-      const response = await getPlayUrl(song, source)
+      console.log('Fetching play URL for:', songWithSource.title, 'source:', resolvedSource)
+      const response = await getPlayUrl(songWithSource, resolvedSource)
       console.log('Play URL response:', response)
       
       if (response.code === 0 && response.data?.url) {
@@ -94,7 +100,13 @@ export const usePlayerStore = defineStore('player', () => {
 
   // 设置播放列表
   const setPlaylist = (songs: Song[]) => {
-    playlist.value = [...songs]
+    const defaultSource = sourceStore.currentSourceName
+    playlist.value = songs.map(song => {
+      if (song.source || !defaultSource) {
+        return song
+      }
+      return { ...song, source: defaultSource }
+    })
   }
 
   // 切换播放模式
