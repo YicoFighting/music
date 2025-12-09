@@ -100,7 +100,7 @@ const route = useRoute()
 const router = useRouter()
 const playerStore = usePlayerStore()
 const sourceStore = useSourceStore()
-const { currentSong, isPlaying, isLoading } = storeToRefs(playerStore)
+const { currentSong, isPlaying, isLoading, playlist } = storeToRefs(playerStore)
 
 const song = ref<Song | null>(null)
 const lyrics = ref('')
@@ -208,7 +208,10 @@ const handlePlay = () => {
 const loadLyrics = async () => {
   if (!song.value) return
 
-  const resolvedSource = (song.value.source as string | undefined) ?? sourceStore.currentSourceName
+  const resolvedSource =
+    (song.value.source as string | undefined)
+    ?? (currentSong.value?.source as string | undefined)
+    ?? sourceStore.currentSourceName
   if (!resolvedSource) {
     lyricsError.value = '请先选择音源'
     return
@@ -294,6 +297,12 @@ const syncSongByRoute = () => {
       console.warn('Failed to parse stored detail song:', error)
       sessionStorage.removeItem('currentDetailSong')
     }
+  }
+
+  const playlistSong = playlist.value.find(item => normalizeId(item.id) === id)
+  if (playlistSong) {
+    applySong(playlistSong)
+    return
   }
 
   applySong(null, { loadLyrics: false })
