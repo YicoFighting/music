@@ -84,7 +84,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, onUnmounted, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, VideoPlay, VideoPause, Loading } from '@element-plus/icons-vue'
 import { getLyrics, type Song } from '@/api/music'
 import { usePlayerStore } from '@/stores/player'
@@ -96,6 +96,7 @@ interface LyricLine {
   text: string
 }
 
+const route = useRoute()
 const router = useRouter()
 const playerStore = usePlayerStore()
 const sourceStore = useSourceStore()
@@ -108,6 +109,11 @@ const lyricsError = ref('')
 const currentTime = ref(0)
 const lyricsContainerRef = ref<HTMLElement | null>(null)
 const lyricRefs = ref<(HTMLElement | null)[]>([])
+
+const normalizeId = (value: string | number | null | undefined): string => {
+  if (value === null || value === undefined) return ''
+  return String(value)
+}
 
 
 
@@ -201,19 +207,25 @@ const handlePlay = () => {
 
 const loadLyrics = async () => {
   if (!song.value) return
-  
-  const source = sourceStore.currentSourceName
-  if (!source) {
+
+  const resolvedSource = (song.value.source as string | undefined) ?? sourceStore.currentSourceName
+  if (!resolvedSource) {
     lyricsError.value = '请先选择音源'
     return
   }
-  
+
+  const requestSong: Song = song.value.source ? song.value : { ...song.value, source: resolvedSource }
+  if (!song.value.source) {
+    song.value = requestSong
+    sessionStorage.setItem('currentDetailSong', JSON.stringify(requestSong))
+  }
+
   try {
     lyricsLoading.value = true
     lyricsError.value = ''
-    
-    const result = await getLyrics(song.value, source)
-    
+
+    const result = await getLyrics(requestSong, resolvedSource)
+
     if (result.code === 0 && result.data?.rawLrc) {
       lyrics.value = result.data.rawLrc
     } else {
@@ -227,6 +239,94 @@ const loadLyrics = async () => {
   }
 }
 
+const applySong = (targetSong: Song | null, options: { loadLyrics?: boolean } = {}) => {
+  const { loadLyrics: shouldLoadLyrics = true } = options
+
+  lyrics.value = ''
+  lyricsError.value = ''
+  lyricsLoading.value = false
+  currentTime.value = 0
+  lyricRefs.value = []
+
+  if (targetSong) {
+    song.value = { ...targetSong }
+    sessionStorage.setItem('currentDetailSong', JSON.stringify(targetSong))
+    if (shouldLoadLyrics) {
+      loadLyrics()
+    }
+  } else {
+    song.value = null
+    sessionStorage.removeItem('currentDetailSong')
+  }
+}
+
+const syncSongByRoute = () => {
+  const idParam = route.params.id as string | undefined
+  const id = normalizeId(idParam)
+
+  if (!id) {
+    if (currentSong.value) {
+      router.replace(`/detail/${normalizeId(currentSong.value.id)}`)
+    } else {
+      applySong(null, { loadLyrics: false })
+    }
+    return
+  }
+
+  if (song.value && normalizeId(song.value.id) === id) {
+    return
+  }
+
+  if (currentSong.value && normalizeId(currentSong.value.id) === id) {
+    applySong(currentSong.value)
+    return
+  }
+
+  const storedSong = sessionStorage.getItem('currentDetailSong')
+  if (storedSong) {
+    try {
+      const parsed: Song = JSON.parse(storedSong)
+      if (normalizeId(parsed.id) === id) {
+        applySong(parsed)
+        return
+      }
+    } catch (error) {
+      console.warn('Failed to parse stored detail song:', error)
+      sessionStorage.removeItem('currentDetailSong')
+    }
+  }
+
+  applySong(null, { loadLyrics: false })
+}
+
+watch(
+  () => route.params.id,
+  () => {
+    syncSongByRoute()
+  },
+  { immediate: true }
+)
+
+watch(currentSong, (newSong) => {
+  if (newSong) {
+    const shouldUpdate = !song.value || song.value.id !== newSong.id
+
+    if (shouldUpdate) {
+      applySong(newSong)
+    } else {
+      sessionStorage.setItem('currentDetailSong', JSON.stringify(newSong))
+    }
+
+    const routeId = normalizeId(route.params.id as string | undefined)
+    const songId = normalizeId(newSong.id)
+    if (routeId !== songId) {
+      router.replace(`/detail/${songId}`)
+    }
+  } else {
+    applySong(null, { loadLyrics: false })
+  }
+})
+
 // 时间更新监听
 let audioElement: HTMLAudioElement | null = null
 
@@ -237,12 +337,6 @@ const updateTime = () => {
 }
 
 onMounted(() => {
-  const storedSong = sessionStorage.getItem('currentDetailSong')
-  if (storedSong) {
-    song.value = JSON.parse(storedSong)
-    loadLyrics()
-  }
-  
   audioElement = document.querySelector('audio')
   if (audioElement) {
     audioElement.addEventListener('timeupdate', updateTime)
