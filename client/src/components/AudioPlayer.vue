@@ -135,12 +135,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, nextTick, onMounted } from 'vue'
+import { ref, watch, computed, nextTick, onMounted, markRaw } from 'vue'
 import { useRouter } from 'vue-router'
-import { VideoPlay, VideoPause, DArrowLeft, DArrowRight, List, Close, Mute, Microphone, RefreshRight, Sort, Switch, CircleCheck } from '@element-plus/icons-vue'
+import { VideoPlay, VideoPause, DArrowLeft, DArrowRight, List, Close, Mute, Microphone, CircleCheck } from '@element-plus/icons-vue'
 import { usePlayerStore } from '@/stores/player'
 import { useLyricStore } from '@/stores/lyric'
 import { storeToRefs } from 'pinia'
+import IconMdiViewSequential from '~icons/mdi/view-sequential'
+import IconMdiRepeatVariant from '~icons/mdi/repeat-variant'
+import IconMdiRepeatOnce from '~icons/mdi/repeat-once'
+import IconMdiShuffleVariant from '~icons/mdi/shuffle-variant'
 
 const router = useRouter()
 const playerStore = usePlayerStore()
@@ -196,13 +200,16 @@ const progressPercent = computed(() => {
   return (currentTime.value / duration.value) * 100
 })
 
+const playModeIcons = {
+  sequence: markRaw(IconMdiViewSequential),
+  loop: markRaw(IconMdiRepeatVariant),
+  repeat: markRaw(IconMdiRepeatOnce),
+  shuffle: markRaw(IconMdiShuffleVariant)
+} as const
+
 const playModeIcon = computed(() => {
-  switch (playMode.value) {
-    case 'repeat': return RefreshRight
-    case 'shuffle': return Sort
-    case 'loop': return Switch
-    default: return Switch
-  }
+  const key = playMode.value as keyof typeof playModeIcons
+  return playModeIcons[key] ?? playModeIcons.sequence
 })
 
 const playModeText = computed(() => {
