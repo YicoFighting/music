@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import type { Song } from '@/api/music'
 import { getPlayUrl } from '@/api/music'
 import { useSourceStore } from './source'
@@ -53,6 +53,10 @@ export const usePlayerStore = defineStore('player', () => {
       console.log('Play URL response:', response)
       
       if (response.code === 0 && response.data?.url) {
+        if (currentUrl.value === response.data.url) {
+          currentUrl.value = ''
+          await nextTick()
+        }
         currentUrl.value = response.data.url
         isPlaying.value = true
       } else {

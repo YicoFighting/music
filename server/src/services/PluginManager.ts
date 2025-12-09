@@ -203,10 +203,7 @@ class PluginManager {
    * 根据名称获取插件
    */
   getPlugin(name: string): MusicPlugin | null {
-    
-    
     const cache = this.plugins.get(name);
-    console.log('this.plugins',this.plugins,cache);
     return cache?.plugin || null;
   }
 
