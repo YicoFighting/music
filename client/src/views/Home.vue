@@ -4,11 +4,15 @@
       <div class="header-top">
         <SourceSelector />
       </div>
-      <h1 class="title">
+      <p class="eyebrow">
         <span class="icon">🎵</span>
-        音乐播放器
-      </h1>
-      <p class="subtitle">搜索和播放你喜欢的音乐</p>
+        听见 · MUSIC EXPERIENCE
+      </p>
+      <div class="vinyl-wrapper">
+        <div class="vinyl"></div>
+        <div class="vinyl-core"></div>
+        <div class="vinyl-light"></div>
+      </div>
     </header>
 
     <main class="main">
@@ -48,8 +52,16 @@
       <div class="my-playlists" v-if="playlists.length > 0">
         <!-- 超过4个显示轮播 -->
         <div v-if="playlists.length > 4" class="playlist-carousel-container">
-          <el-carousel :interval="0" arrow="always" height="240px" indicator-position="outside">
-            <el-carousel-item v-for="(chunk, index) in playlistChunks" :key="index">
+          <el-carousel
+            :interval="0"
+            arrow="always"
+            height="240px"
+            indicator-position="outside"
+          >
+            <el-carousel-item
+              v-for="(chunk, index) in playlistChunks"
+              :key="index"
+            >
               <div class="playlist-grid carousel-grid">
                 <div
                   v-for="playlist in chunk"
@@ -58,16 +70,25 @@
                   @click="goToDetail(playlist)"
                 >
                   <div class="card-cover">
-                    <img v-if="playlist.cover" :src="playlist.cover" class="cover-img" />
+                    <img
+                      v-if="playlist.cover"
+                      :src="playlist.cover"
+                      class="cover-img"
+                    />
                     <div v-else class="cover-placeholder">🎵</div>
                     <!-- 悬停显示的播放按钮 -->
-                    <div class="play-btn-overlay" @click.stop="playPlaylist(playlist)">
+                    <div
+                      class="play-btn-overlay"
+                      @click.stop="playPlaylist(playlist)"
+                    >
                       <el-icon><VideoPlay /></el-icon>
                     </div>
                   </div>
                   <div class="card-info">
                     <div class="card-name">{{ playlist.name }}</div>
-                    <div class="card-count">{{ playlist.songs.length }} 首歌曲</div>
+                    <div class="card-count">
+                      {{ playlist.songs.length }} 首歌曲
+                    </div>
                   </div>
                 </div>
               </div>
@@ -84,9 +105,16 @@
             @click="goToDetail(playlist)"
           >
             <div class="card-cover">
-              <img v-if="playlist.cover" :src="playlist.cover" class="cover-img" />
+              <img
+                v-if="playlist.cover"
+                :src="playlist.cover"
+                class="cover-img"
+              />
               <div v-else class="cover-placeholder">🎵</div>
-              <div class="play-btn-overlay" @click.stop="playPlaylist(playlist)">
+              <div
+                class="play-btn-overlay"
+                @click.stop="playPlaylist(playlist)"
+              >
                 <el-icon><VideoPlay /></el-icon>
               </div>
             </div>
@@ -102,70 +130,70 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { Search, VideoPlay } from '@element-plus/icons-vue'
-import SourceSelector from '@/components/SourceSelector.vue'
-import { useSourceStore } from '@/stores/source'
-import { useMyPlaylistStore, type Playlist } from '@/stores/myPlaylist'
-import { usePlayerStore } from '@/stores/player'
+import { ref, computed } from "vue";
+import { useRouter } from "vue-router";
+import { ElMessage } from "element-plus";
+import { Search, VideoPlay } from "@element-plus/icons-vue";
+import SourceSelector from "@/components/SourceSelector.vue";
+import { useSourceStore } from "@/stores/source";
+import { useMyPlaylistStore, type Playlist } from "@/stores/myPlaylist";
+import { usePlayerStore } from "@/stores/player";
 
-const router = useRouter()
-const sourceStore = useSourceStore()
-const myPlaylistStore = useMyPlaylistStore()
-const playerStore = usePlayerStore()
+const router = useRouter();
+const sourceStore = useSourceStore();
+const myPlaylistStore = useMyPlaylistStore();
+const playerStore = usePlayerStore();
 
-const searchQuery = ref('')
-const loading = ref(false)
+const searchQuery = ref("");
+const loading = ref(false);
 
-const hotKeywords = ['周杰伦', '林俊杰', '陈奕迅', '邓紫棋', '薛之谦']
-const playlists = computed(() => myPlaylistStore.playlists)
+const hotKeywords = ["周杰伦", "林俊杰", "陈奕迅", "邓紫棋", "薛之谦"];
+const playlists = computed(() => myPlaylistStore.playlists);
 
 // 将歌单按4个一组切分
 const playlistChunks = computed(() => {
-  const result = []
+  const result = [];
   for (let i = 0; i < playlists.value.length; i += 4) {
-    result.push(playlists.value.slice(i, i + 4))
+    result.push(playlists.value.slice(i, i + 4));
   }
-  return result
-})
+  return result;
+});
 
 const handleSearch = () => {
   if (!searchQuery.value.trim()) {
-    ElMessage.warning('请输入搜索关键词')
-    return
+    ElMessage.warning("请输入搜索关键词");
+    return;
   }
-  
+
   if (!sourceStore.currentSourceName) {
-    ElMessage.warning('请先选择音源')
-    return
+    ElMessage.warning("请先选择音源");
+    return;
   }
-  
+
   router.push({
-    path: '/result',
-    query: { q: searchQuery.value.trim() }
-  })
-}
+    path: "/result",
+    query: { q: searchQuery.value.trim() },
+  });
+};
 
 const searchKeyword = (keyword: string) => {
-  searchQuery.value = keyword
-  handleSearch()
-}
+  searchQuery.value = keyword;
+  handleSearch();
+};
 
 const playPlaylist = (playlist: Playlist) => {
   if (playlist.songs.length === 0) {
-    ElMessage.info('歌单为空，快去添加歌曲吧')
-    return
+    ElMessage.info("歌单为空，快去添加歌曲吧");
+    return;
   }
-  
-  playerStore.setPlaylist(playlist.songs)
-  playerStore.playSong(playlist.songs[0])
-}
+
+  playerStore.setPlaylist(playlist.songs);
+  playerStore.playSong(playlist.songs[0]);
+};
 
 const goToDetail = (playlist: Playlist) => {
-  router.push(`/playlist/${playlist.id}`)
-}
+  router.push(`/playlist/${playlist.id}`);
+};
 </script>
 
 <style scoped>
@@ -174,58 +202,106 @@ const goToDetail = (playlist: Playlist) => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 24px;
+  gap: 56px;
+  padding: 56px 32px 120px;
 }
 
 .header {
+  width: min(960px, 100%);
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 28px;
+  padding-top: 48px;
   text-align: center;
-  margin-bottom: 48px;
 }
 
 .header-top {
-  position: fixed;
-  top: 16px;
-  right: 24px;
+  position: absolute;
+  top: 0;
+  right: 0;
 }
 
-.title {
-  font-size: 48px;
-  font-weight: 700;
-  color: #fff;
-  margin-bottom: 16px;
-  display: flex;
+.eyebrow {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 16px;
+  gap: 8px;
+  padding: 6px 18px;
+  border-radius: 999px;
+  color: rgba(194, 214, 255, 0.92);
+  font-size: 16px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }
 
 .icon {
-  font-size: 56px;
-  animation: bounce 2s infinite;
+  font-size: 18px;
+  animation: bounce 2.4s ease-in-out infinite;
 }
 
 @keyframes bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
 }
 
-.subtitle {
-  font-size: 18px;
-  color: rgba(255, 255, 255, 0.6);
+.vinyl-wrapper {
+  position: relative;
+  width: clamp(220px, 36vw, 360px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, rgba(10, 10, 15, 0.88), rgba(6, 6, 10, 0.6));
+  box-shadow: 0 30px 80px -40px rgba(10, 20, 45, 0.9), inset 0 0 0 2px rgba(255, 255, 255, 0.05);
+  display: grid;
+  place-items: center;
+}
+
+.vinyl {
+  width: 86%;
+  height: 86%;
+  border-radius: 50%;
+  background: conic-gradient(from 90deg, rgba(54, 89, 226, 0.55), rgba(155, 92, 255, 0.65), rgba(64, 158, 255, 0.7), rgba(54, 89, 226, 0.55));
+  box-shadow: inset 0 0 22px rgba(0, 0, 0, 0.6);
+  animation: spinVinyl 18s linear infinite;
+  display: grid;
+  place-items: center;
+}
+
+.vinyl-core {
+  width: clamp(46px, 8vw, 68px);
+  height: clamp(46px, 8vw, 68px);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.92), rgba(160, 180, 255, 0.2));
+  box-shadow: 0 0 24px rgba(140, 170, 255, 0.45);
+}
+
+.vinyl-light {
+  position: absolute;
+  inset: 12%;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.08);
+}
+
+@keyframes spinVinyl {
+  to { transform: rotate(360deg); }
 }
 
 .main {
-  width: 100%;
-  max-width: 800px;
+  width: min(960px, 100%);
+  display: grid;
+  gap: 40px;
 }
 
 .search-bar {
   display: flex;
-  gap: 12px;
-  width: 100%;
-  max-width: 600px;
+  gap: 16px;
+  width: min(600px, 100%);
   margin: 0 auto;
+  align-items: center;
 }
 
 .search-input {
@@ -234,44 +310,48 @@ const goToDetail = (playlist: Playlist) => {
 
 .search-input :deep(.el-input__wrapper) {
   background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.24);
   box-shadow: none;
-  border-radius: 12px;
-  height: 50px;
+  border-radius: 14px;
+  height: 52px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.search-input :deep(.el-input__wrapper:hover),
+.search-input :deep(.is-focus .el-input__wrapper) {
+  border-color: rgba(120, 170, 255, 0.55);
+  box-shadow: 0 0 0 4px rgba(110, 170, 255, 0.18);
 }
 
 .search-input :deep(.el-input__inner) {
-  color: #fff;
+  color: #ffffff;
   font-size: 16px;
 }
 
 .search-input :deep(.el-input__inner::placeholder) {
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.search-input :deep(.el-input__prefix) {
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.56);
 }
 
 .search-btn {
-  background: linear-gradient(135deg, #409eff 0%, #66b1ff 100%);
+  background: linear-gradient(135deg, #4c9dff 0%, #7a71ff 100%);
   border: none;
-  border-radius: 12px;
-  padding: 0 32px;
-  height: 50px;
+  border-radius: 14px;
+  padding: 0 36px;
+  height: 52px;
   font-size: 16px;
+  font-weight: 600;
 }
 
 .search-btn:hover {
-  background: linear-gradient(135deg, #66b1ff 0%, #409eff 100%);
+  background: linear-gradient(135deg, #66b6ff 0%, #8a7dff 100%);
 }
 
 .hot-keywords {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 24px;
+  gap: 10px;
+  margin-top: 20px;
   justify-content: center;
   margin-bottom: 48px;
 }
@@ -290,7 +370,7 @@ const goToDetail = (playlist: Playlist) => {
 }
 
 .keyword-tag:hover {
-  background: var(--primary-color);
+  background: linear-gradient(135deg, rgba(120, 160, 255, 0.36), rgba(120, 200, 255, 0.22));
   color: #fff;
 }
 
@@ -362,7 +442,11 @@ const goToDetail = (playlist: Playlist) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+  background: linear-gradient(
+    135deg,
+    var(--primary-color) 0%,
+    var(--primary-light) 100%
+  );
   font-size: 40px;
 }
 
