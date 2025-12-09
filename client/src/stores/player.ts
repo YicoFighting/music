@@ -2,12 +2,14 @@ import { defineStore } from 'pinia'
 import { ref, computed, nextTick } from 'vue'
 import type { Song } from '@/api/music'
 import { getPlayUrl } from '@/api/music'
+import { getAudioSource } from '@/utils/audioCache'
 import { useSourceStore } from './source'
 
 // 播放模式
 export type PlayMode = 'sequence' | 'loop' | 'repeat' | 'shuffle'
 
 const PLAY_MODE_KEY = 'music_play_mode'
+const noop = () => {}
 
 export const usePlayerStore = defineStore('player', () => {
   // 状态
@@ -19,10 +21,38 @@ export const usePlayerStore = defineStore('player', () => {
   const currentIndex = ref(-1)
   const playMode = ref<PlayMode>((localStorage.getItem(PLAY_MODE_KEY) as PlayMode) || 'sequence')
   const showPlaylist = ref(false)
+  const currentSourceCached = ref(false)
+  const cachedSongMap = ref<Record<string, boolean>>({})
   const sourceStore = useSourceStore()
+  let revokeCurrentAudio: () => void = noop
 
   // 计算属性
   const hasCurrentSong = computed(() => currentSong.value !== null)
+
+  const normalizeSongId = (songId: string | number): string => String(songId)
+
+  const setSongCached = (songId: string | number, cached: boolean) => {
+    const key = normalizeSongId(songId)
+    if (cached) {
+      cachedSongMap.value = { ...cachedSongMap.value, [key]: true }
+    } else if (cachedSongMap.value[key]) {
+      const { [key]: _ignored, ...rest } = cachedSongMap.value
+      cachedSongMap.value = rest
+    }
+  }
+
+  const isSongCached = (songId: string | number): boolean => {
+    const key = normalizeSongId(songId)
+    return cachedSongMap.value[key] === true
+  }
+
+  const releaseCurrentAudio = () => {
+    if (revokeCurrentAudio !== noop) {
+      revokeCurrentAudio()
+      revokeCurrentAudio = noop
+    }
+    currentSourceCached.value = false
+  }
 
   // 播放歌曲
   const playSong = async (song: Song) => {
@@ -59,19 +89,34 @@ export const usePlayerStore = defineStore('player', () => {
       console.log('Play URL response:', response)
       
       if (response.code === 0 && response.data?.url) {
-        if (currentUrl.value === response.data.url) {
+        const audioSource = await getAudioSource(response.data.url, {
+          headers: response.data.headers
+        })
+
+        releaseCurrentAudio()
+
+        if (currentUrl.value) {
           currentUrl.value = ''
           await nextTick()
         }
-        currentUrl.value = response.data.url
+
+        currentUrl.value = audioSource.src
+        revokeCurrentAudio = audioSource.revoke
+        const isCached = audioSource.fromCache || audioSource.cached
+        currentSourceCached.value = isCached
+        setSongCached(songWithSource.id, isCached)
         isPlaying.value = true
       } else {
         console.error('Failed to get play url:', response.msg)
         isPlaying.value = false
+        currentSourceCached.value = false
+        setSongCached(songWithSource.id, false)
       }
     } catch (error) {
       console.error('Failed to get play url:', error)
       isPlaying.value = false
+      currentSourceCached.value = false
+      setSongCached(songWithSource.id, false)
     } finally {
       isLoading.value = false
     }
@@ -211,9 +256,9 @@ export const usePlayerStore = defineStore('player', () => {
   // 从播放列表移除歌曲
   const removeFromPlaylist = (index: number) => {
     if (index < 0 || index >= playlist.value.length) return
-    
+
     playlist.value.splice(index, 1)
-    
+
     // 如果移除的是当前播放的歌曲
     if (index === currentIndex.value) {
       if (playlist.value.length === 0) {
@@ -221,6 +266,8 @@ export const usePlayerStore = defineStore('player', () => {
         currentUrl.value = ''
         isPlaying.value = false
         currentIndex.value = -1
+        releaseCurrentAudio()
+        currentSourceCached.value = false
       } else {
         currentIndex.value = Math.min(index, playlist.value.length - 1)
         playSong(playlist.value[currentIndex.value])
@@ -237,6 +284,8 @@ export const usePlayerStore = defineStore('player', () => {
     currentUrl.value = ''
     isPlaying.value = false
     currentIndex.value = -1
+    releaseCurrentAudio()
+    currentSourceCached.value = false
   }
 
   return {
@@ -249,6 +298,7 @@ export const usePlayerStore = defineStore('player', () => {
     currentIndex,
     playMode,
     showPlaylist,
+    currentSourceCached,
     // 计算属性
     hasCurrentSong,
     // 方法
@@ -264,5 +314,6 @@ export const usePlayerStore = defineStore('player', () => {
     togglePlaylist,
     removeFromPlaylist,
     clearPlaylist,
+    isSongCached,
   }
 })

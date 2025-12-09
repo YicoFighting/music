@@ -57,6 +57,11 @@
 
         <!-- 时间和音量 -->
         <div class="extra-controls">
+          <el-tooltip v-if="currentSourceCached" content="已缓存" placement="top">
+            <el-icon class="cache-indicator" :size="18">
+              <CircleCheck />
+            </el-icon>
+          </el-tooltip>
           <span class="time">{{ formatTime(currentTime) }} / {{ formatTime(duration) }}</span>
           <div class="volume-control">
             <el-icon :size="16" @click="toggleMute"><component :is="volumeIcon" /></el-icon>
@@ -93,7 +98,16 @@
             >
               <span class="playlist-index">{{ index + 1 }}</span>
               <div class="playlist-info">
-                <div class="playlist-title">{{ song.title }}</div>
+                <div class="playlist-title">
+                  {{ song.title }}
+                  <el-icon
+                    v-if="playerStore.isSongCached(song.id)"
+                    class="cache-indicator cache-indicator--sm"
+                    :size="14"
+                  >
+                    <CircleCheck />
+                  </el-icon>
+                </div>
                 <div class="playlist-artist">{{ song.artist }}</div>
               </div>
               <el-button
@@ -123,13 +137,13 @@
 <script setup lang="ts">
 import { ref, watch, computed, nextTick, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { VideoPlay, VideoPause, DArrowLeft, DArrowRight, List, Close, Mute, Microphone, RefreshRight, Sort, Switch } from '@element-plus/icons-vue'
+import { VideoPlay, VideoPause, DArrowLeft, DArrowRight, List, Close, Mute, Microphone, RefreshRight, Sort, Switch, CircleCheck } from '@element-plus/icons-vue'
 import { usePlayerStore } from '@/stores/player'
 import { storeToRefs } from 'pinia'
 
 const router = useRouter()
 const playerStore = usePlayerStore()
-const { currentSong, isPlaying, isLoading, currentUrl, hasCurrentSong, playMode, showPlaylist, playlist, currentIndex } = storeToRefs(playerStore)
+const { currentSong, isPlaying, isLoading, currentUrl, hasCurrentSong, playMode, showPlaylist, playlist, currentIndex, currentSourceCached } = storeToRefs(playerStore)
 
 const audioRef = ref<HTMLAudioElement | null>(null)
 const volume = ref(80)
@@ -476,7 +490,7 @@ const goToDetail = () => {
 .time {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.5);
-  min-width: 80px;
+  min-width: 110px;
   text-align: right;
 }
 

@@ -299,7 +299,7 @@ const syncSongByRoute = () => {
     }
   }
 
-  const playlistSong = playlist.value.find(item => normalizeId(item.id) === id)
+  const playlistSong = playlist.value.find((item: Song) => normalizeId(item.id) === id)
   if (playlistSong) {
     applySong(playlistSong)
     return
