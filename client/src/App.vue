@@ -7,8 +7,11 @@
 import { onMounted } from 'vue'
 import AudioPlayer from '@/components/AudioPlayer.vue'
 import { useSourceStore } from '@/stores/source'
+import { useDynamicTitle } from '@/composables/useDynamicTitle'
 
 const sourceStore = useSourceStore()
+
+useDynamicTitle()
 
 onMounted(() => {
   sourceStore.initialize()

@@ -30,4 +30,11 @@ const router = createRouter({
   ],
 })
 
+router.afterEach((to) => {
+  if (typeof document !== 'undefined') {
+    const metaTitle = (to.meta?.title as string | undefined) ?? '听见'
+    document.title = `听见 · ${metaTitle}`
+  }
+})
+
 export default router

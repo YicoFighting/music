@@ -139,10 +139,12 @@ import { ref, watch, computed, nextTick, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { VideoPlay, VideoPause, DArrowLeft, DArrowRight, List, Close, Mute, Microphone, RefreshRight, Sort, Switch, CircleCheck } from '@element-plus/icons-vue'
 import { usePlayerStore } from '@/stores/player'
+import { useLyricStore } from '@/stores/lyric'
 import { storeToRefs } from 'pinia'
 
 const router = useRouter()
 const playerStore = usePlayerStore()
+const lyricStore = useLyricStore()
 const { currentSong, isPlaying, isLoading, currentUrl, hasCurrentSong, playMode, showPlaylist, playlist, currentIndex, currentSourceCached } = storeToRefs(playerStore)
 
 const audioRef = ref<HTMLAudioElement | null>(null)
@@ -296,12 +298,14 @@ const handleError = (e: Event) => {
 const handleTimeUpdate = () => {
   if (audioRef.value) {
     currentTime.value = audioRef.value.currentTime
+    lyricStore.updateCurrentTime(audioRef.value.currentTime)
   }
 }
 
 const handleLoadedMetadata = () => {
   if (audioRef.value) {
     duration.value = audioRef.value.duration
+    lyricStore.updateCurrentTime(audioRef.value.currentTime || 0)
   }
 }
 
@@ -312,6 +316,7 @@ const handleProgressClick = (e: MouseEvent) => {
   const rect = target.getBoundingClientRect()
   const percent = (e.clientX - rect.left) / rect.width
   audioRef.value.currentTime = percent * duration.value
+  lyricStore.updateCurrentTime(audioRef.value.currentTime)
 }
 
 const toggleMute = () => {

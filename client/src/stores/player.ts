@@ -4,6 +4,7 @@ import type { Song } from '@/api/music'
 import { getPlayUrl } from '@/api/music'
 import { getAudioSource } from '@/utils/audioCache'
 import { useSourceStore } from './source'
+import { useLyricStore } from './lyric'
 
 // 播放模式
 export type PlayMode = 'sequence' | 'loop' | 'repeat' | 'shuffle'
@@ -24,6 +25,7 @@ export const usePlayerStore = defineStore('player', () => {
   const currentSourceCached = ref(false)
   const cachedSongMap = ref<Record<string, boolean>>({})
   const sourceStore = useSourceStore()
+  const lyricStore = useLyricStore()
   let revokeCurrentAudio: () => void = noop
 
   // 计算属性
@@ -105,18 +107,22 @@ export const usePlayerStore = defineStore('player', () => {
         const isCached = audioSource.fromCache || audioSource.cached
         currentSourceCached.value = isCached
         setSongCached(songWithSource.id, isCached)
+        lyricStore.loadLyrics(songWithSource, resolvedSource)
+        lyricStore.updateCurrentTime(0)
         isPlaying.value = true
       } else {
         console.error('Failed to get play url:', response.msg)
         isPlaying.value = false
         currentSourceCached.value = false
         setSongCached(songWithSource.id, false)
+        lyricStore.clear()
       }
     } catch (error) {
       console.error('Failed to get play url:', error)
       isPlaying.value = false
       currentSourceCached.value = false
       setSongCached(songWithSource.id, false)
+      lyricStore.clear()
     } finally {
       isLoading.value = false
     }
@@ -268,6 +274,7 @@ export const usePlayerStore = defineStore('player', () => {
         currentIndex.value = -1
         releaseCurrentAudio()
         currentSourceCached.value = false
+        lyricStore.clear()
       } else {
         currentIndex.value = Math.min(index, playlist.value.length - 1)
         playSong(playlist.value[currentIndex.value])
@@ -286,6 +293,7 @@ export const usePlayerStore = defineStore('player', () => {
     currentIndex.value = -1
     releaseCurrentAudio()
     currentSourceCached.value = false
+    lyricStore.clear()
   }
 
   return {
